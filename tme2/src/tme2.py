@@ -5,7 +5,7 @@ from pathlib import Path
 from mltools import plot_data, plot_frontiere, make_grid, gen_arti
 
 
-FIG_DIR = Path("figures")
+FIG_DIR = Path("figures_tme2")
 FIG_DIR.mkdir(exist_ok=True)
 
 def savefig(name):
@@ -139,14 +139,14 @@ if __name__=="__main__":
     plt.figure()
     plot_frontiere(datax, lambda x: np.sign(x.dot(w_mse)), step=100)
     plot_data(datax, datay)
-    plt.title("Deux gaussiennes — frontière MSE")
+    plt.title("Deux gaussiennes - frontière MSE")
     savefig("01_frontiere_mse_deux_gaussiennes.png")
     plt.show()
 
     plt.figure()
     plot_frontiere(datax, lambda x: np.sign(x.dot(w_log)), step=100)
     plot_data(datax, datay)
-    plt.title("Deux gaussiennes — frontière logistique")
+    plt.title("Deux gaussiennes - frontière logistique")
     savefig("02_frontiere_logistique_deux_gaussiennes.png")
     plt.show()
 
@@ -155,7 +155,7 @@ if __name__=="__main__":
     plt.plot(loss_log,label="Logistique")
     plt.xlabel("itération")
     plt.ylabel("coût moyen")
-    plt.title("Évolution du coût — deux gaussiennes")
+    plt.title("Évolution du coût - deux gaussiennes")
     plt.legend()
     savefig("03_cout_deux_gaussiennes.png")
     plt.show()
@@ -184,7 +184,7 @@ if __name__=="__main__":
 
     plt.xlabel("itération")
     plt.ylabel("coût moyen")
-    plt.title("Effet du pas de gradient — régression logistique")
+    plt.title("Effet du pas de gradient - régression logistique")
     plt.legend()
     savefig("04_effet_pas_gradient.png")
     plt.show()
@@ -292,7 +292,7 @@ if __name__=="__main__":
         plt.figure()
         plot_frontiere(data, lambda x: np.sign(x.dot(w_log)), step=100)
         plot_data(data, y)
-        plt.title("Régression logistique — " + name)
+        plt.title("Régression logistique - " + name)
         savefig("10_frontiere_logistique_" + name + ".png")
         plt.show()
 
@@ -300,7 +300,7 @@ if __name__=="__main__":
         plt.plot(loss_log_other)
         plt.xlabel("itération")
         plt.ylabel("coût moyen")
-        plt.title("Évolution du coût — " + name)
+        plt.title("Évolution du coût - " + name)
         savefig("11_cout_logistique_" + name + ".png")
         plt.show()
 
