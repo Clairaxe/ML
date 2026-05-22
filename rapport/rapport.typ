@@ -4,17 +4,22 @@
   title: [Rapport des TME de Machine Learning],
   authors: (
     (
-      name: "Claire Chambaz 21522431",
+      name: "Claire Chambaz 21522431 and Camila Maura Llauri 21522444",
     ),
   ),
 )
 
 #let fig(path, caption) = figure(
-  image(path, width: 75%),
-  caption: caption,
+image(path, width: 75%),
+caption: caption,
 )
 
-= TME 1 — Estimation de densité
+#let figwide(path, caption) = figure(
+image(path, width: 95%),
+caption: caption,
+)
+
+= TME 1 : Estimation de densité
 
 == Objectif
 
@@ -36,8 +41,6 @@ La note moyenne des bars est ≈ 3.10.
   caption: [Répartition des bars et restaurants à Paris.]
 )
 
-On observe une forte concentration dans le centre de Paris, cohérente avec l’activité commerciale et touristique.
-
 == Estimation par histogramme
 
 L’estimateur par histogramme découpe l’espace en cellules régulières.
@@ -58,13 +61,13 @@ Pour un grand nombre (steps=40), elle devient bruitée.
 → Une valeur intermédiaire est préférable.
 
 Cette observation est confirmée quantitativement :
-- meilleur steps (test) = **10** pour les bars
+- meilleur steps (test) = *10* pour les bars
 
 == Vérification de la densité
 
 On vérifie que l’intégrale de la densité est proche de 1 :
 
-- intégrale ≈ **1.02**
+- intégrale ≈ *1.02*
 
 Cela confirme que l’estimateur est bien une densité.
 
@@ -72,19 +75,26 @@ Cela confirme que l’estimateur est bien une densité.
 
 #figure(
   image("figures_tme1/03_hist_ll.png", width: 75%),
-  caption: [Log-vraisemblance en fonction du nombre de cellules.]
+  caption: [Log-vraisemblance moyenne en apprentissage et en test pour l'estimation par histogramme.]
 )
 
 La log-vraisemblance test est maximale pour :
-- **steps = 10** (bars)
+- *steps = 10* (bars)
 
 == Cas des données rares : boîtes de nuit
 
 Les boîtes de nuit sont moins nombreuses.
 
-- meilleur steps = **5**
+#figure(
+  image("figures_tme1/04_hist_ll_night_club.png", width: 75%),
+  caption: [Log-vraisemblance moyenne en apprentissage et en test pour les boîtes de nuit.]
+)
+
+- meilleur steps = *5*
 
 → Une discrétisation plus grossière est nécessaire pour éviter des cellules vides.
+
+Le meilleur hyperparamètre n’est donc pas du même ordre que pour les bars.
 
 == Estimation par noyaux (KDE)
 
@@ -92,36 +102,37 @@ Les boîtes de nuit sont moins nombreuses.
   grid(
     columns: 2,
     gutter: 10pt,
-    [#image("figures_tme1/05_kde_density_0.005.png", width: 100%)],
-    [#image("figures_tme1/05_kde_density_0.02.png", width: 100%)],
+    [#image("figures_tme1/06_kde_density_0.005.png", width: 100%)],
+    [#image("figures_tme1/06_kde_density_0.02.png", width: 100%)],
   ),
-  caption: [Densité estimée par KDE pour différents σ.]
+  caption: [Estimation de densité estimée par KDE gaussienne pour différentes valuers de σ.]
 )
 
 Un petit σ donne une densité bruitée.  
 Un grand σ donne une densité trop lissée.
 
 #figure(
-  image("figures_tme1/04_kde_ll.png", width: 70%),
-  caption: [Log-vraisemblance pour la KDE.]
+  image("figures_tme1/05_kde_ll_gaussian.png", width: 70%),
+  caption: [Log-vraisemblance moyenne pour la KDE gaussienne en fonction de σ.]
 )
 
 Résultats :
-- meilleur σ (gaussien) = **0.003**
-- meilleur σ (uniforme) = **0.02**
+- meilleur σ (gaussien) = *0.003*
+- meilleur σ (uniforme) = *0.02*
 
 Le noyau gaussien produit une densité plus lisse que le noyau uniforme.
+Les intégrales obtenues sont proches de 1, on obtient donc bien une densité.
 
 == Régression par Nadaraya–Watson
 
 #figure(
-  image("figures_tme1/06_nadaraya_mse.png", width: 70%),
-  caption: [Erreur quadratique moyenne selon σ.]
+  image("figures_tme1/08_nadaraya_mse.png", width: 70%),
+  caption: [Erreur quadratique moyenne de l'estimateur Nadaraya-Watson selon σ.]
 )
 
 Résultat :
-- meilleur σ = **0.01**
-- MSE minimale ≈ **3.49**
+- meilleur σ = *0.01*
+- MSE minimale ≈ *3.49*
 
 → Petit σ : sur-apprentissage  
 → Grand σ : sous-apprentissage
@@ -137,13 +148,34 @@ Le choix des hyperparamètres est crucial :
 Les résultats illustrent le compromis biais–variance.  
 La validation sur un ensemble de test permet de choisir un modèle qui généralise correctement.
 
-= TME 2 — Descente de gradient
+= TME 2 : Descente de gradient
 
 == Objectif
 
 Ce TME étudie la descente de gradient pour deux fonctions de coût : la perte aux moindres carrés et la perte logistique. L’objectif est d’observer la convergence de l’algorithme, l’effet du pas de gradient, et les limites d’un classifieur linéaire selon la structure des données.
 
 == Fonctions de coût et gradients
+
+#figure(
+  grid(
+    columns: 2,
+    gutter: 10pt,
+
+    [
+      #image("figures_tme2/00_frontiere_aleatoire.png", width: 100%)
+    ],
+
+    [
+      #image("figures_tme2/00_surface_mse.png", width: 100%)
+    ],
+  ),
+  caption: [
+    Exemple de frontière de décision aléatoire et visualisation de la surface du coût MSE.
+  ],
+)
+
+La surface de coût MSE présente une structure quadratique convexe.
+La frontière aléatoire illustre l’effet du vecteur de poids sur la séparation des classes.
 
 Nous avons implémenté les fonctions `mse`, `reglog`, ainsi que leurs gradients. Les fonctions prennent en entrée une matrice d’exemples $X in RR^(n times d)$, un vecteur de poids $w in RR^(d times 1)$ et un vecteur de labels $Y in RR^(n times 1)$.
 
@@ -201,7 +233,7 @@ Résultats :
 - $epsilon = 0.1$ : coût final ≈ 0.067
 - $epsilon = 1.0$ : coût final ≈ 0.009 (convergence rapide)
 
-Dans tous les cas, l’accuracy reste égale à 1.00.
+Dans cette expérience, l’accuracy reste égale à 1.00 pour toutes les valeurs testées de $epsilon$.
 
 Lorsque le pas est trop petit, la convergence est lente. Un pas plus grand accélère la convergence, mais peut devenir instable dans d’autres contextes.
 
@@ -233,7 +265,7 @@ Dans le cas non séparable, certaines observations sont forcément mal classées
 
 #figure(
   image("figures_tme2/07_cout_separable_vs_non_separable.png", width: 75%),
-  caption: [Évolution du coût.],
+  caption: [Évolution du coût moyen dans les cas séparable et non séparable.]
 )
 
 Le coût reste plus élevé lorsque les classes se recouvrent.
@@ -255,7 +287,7 @@ On visualise la fonction de coût dans l’espace des poids.
       #image("figures_tme2/09_surface_logistique_trajectoire.png", width: 100%)
     ],
   ),
-  caption: [Surface de coût et trajectoire suivie par la descente de gradient.],
+  caption: [Surface du coût et trajectoire des poids au cours de la descente de gradient.]
 )
 
 La trajectoire montre que les poids évoluent progressivement vers une zone de faible coût.  
@@ -278,7 +310,7 @@ On teste la régression logistique sur des données non linéaires.
       #image("figures_tme2/10_frontiere_logistique_echiquier.png", width: 100%)
     ],
   ),
-  caption: [Frontières obtenues sur des données non linéaires.],
+  caption: [Frontières de décision obtenues par régression logistique sur des données non linéaires.]
 )
 
 Résultats :
@@ -315,7 +347,7 @@ Les expériences montrent :
 - et les limites fondamentales d’un modèle linéaire face à des données non linéaires.
 
 
-= TME 3 — Perceptron et SVM
+= TME 3 : Perceptron et SVM
 
 == Introduction
 
@@ -323,11 +355,11 @@ L'objectif de ce TME est d'étudier plusieurs méthodes de classification binair
 
 Dans tout le rapport, les labels sont encodés en $-1$ et $+1$. Le classifieur linéaire prédit donc le signe de $x^T w$.
 
-== Perceptron
+== Perceptron et classe linéaire
 
 La perte perceptron utilisée est
 $
-  ell(w, x, y) = max(0, - y x^T w).
+ell(w, x, y) = max(0, - y x^T w).
 $
 
 Cette perte est nulle lorsque l'exemple est bien classé avec une marge positive, et strictement positive lorsqu'il est mal classé. Le gradient utilisé dans le code correspond à la moyenne des contributions des exemples mal classés.
@@ -338,27 +370,27 @@ Le modèle est implémenté dans une classe `Lineaire`. Cette classe permet de c
 
 Nous isolons d'abord deux classes, les chiffres 6 et 9. Quelques exemples des images utilisées sont représentés ci-dessous.
 
-#fig("figures_tme3/01_exemples_usps_6_vs_9.png", [Exemples USPS pour les classes 6 et 9.])
+#fig("figures_tme3/01_exemples_usps_6_vs_9.png", [Exemples USPS utilisés pour la classification 6 contre 9.])
 
-Le perceptron est ensuite entraîné sur ces deux classes. Les résultats obtenus sont les suivants.
+Le perceptron est ensuite entraîné sur ces deux classes.
 
 #table(
-  columns: 4,
-  inset: 6pt,
-  align: center,
-  [Expérience], [Score train], [Score test], [Erreur test],
-  [USPS 6 vs 9], [0.998], [0.991], [0.009],
+columns: 4,
+inset: 6pt,
+align: center,
+[Expérience], [Score train], [Score test], [Erreur test],
+[USPS 6 vs 9], [0.998], [0.994], [0.006],
 )
 
-Le coût final est très faible, environ 0.0001. Le modèle distingue donc très bien les deux chiffres.
+Le modèle distingue donc très bien les deux chiffres.
 
-#fig("figures_tme3/02_loss_usps_6_vs_9.png", [Évolution du coût du perceptron sur USPS 6 vs 9.])
+#fig("figures_tme3/02_loss_usps_6_vs_9.png", [Évolution du coût moyen du perceptron sur USPS 6 contre 9.])
 
-#fig("figures_tme3/03_erreurs_usps_6_vs_9.png", [Erreurs train et test pour USPS 6 vs 9.])
+#fig("figures_tme3/03_erreurs_usps_6_vs_9.png", [Erreurs d'apprentissage et de test du perceptron sur USPS 6 contre 9.])
 
 L'erreur de test reste très proche de l'erreur d'apprentissage. On ne constate donc pas de sur-apprentissage marqué.
 
-#fig("figures_tme3/04_poids_usps_6_vs_9.png", [Matrice de poids du perceptron pour USPS 6 vs 9.])
+#fig("figures_tme3/04_poids_usps_6_vs_9.png", [Matrice de poids apprise par le perceptron pour séparer les chiffres 6 et 9.])
 
 Cette matrice s'interprète comme un masque discriminant. Les pixels de poids positif favorisent la classe positive, ici le 9, tandis que les pixels de poids négatif favorisent la classe négative, ici le 6.
 
@@ -367,20 +399,20 @@ Cette matrice s'interprète comme un masque discriminant. Les pixels de poids po
 On entraîne ensuite un perceptron pour séparer le chiffre 6 de tous les autres chiffres. Le problème est plus difficile, car la classe négative est très hétérogène.
 
 #table(
-  columns: 4,
-  inset: 6pt,
-  align: center,
-  [Expérience], [Score train], [Score test], [Erreur test],
-  [USPS 6 vs all], [0.980], [0.969], [0.031],
+columns: 4,
+inset: 6pt,
+align: center,
+[Expérience], [Score train], [Score test], [Erreur test],
+[USPS 6 vs all], [0.976], [0.974], [0.026],
 )
 
 Le score reste élevé, mais l'erreur test est plus importante que dans le cas 6 contre 9. Cela confirme que le problème est plus difficile.
 
-#fig("figures_tme3/05_loss_usps_6_vs_all.png", [Évolution du coût pour USPS 6 vs all.])
+#fig("figures_tme3/05_loss_usps_6_vs_all.png", [Évolution du coût moyen du perceptron pour la classification 6 contre toutes les autres classes.])
 
-#fig("figures_tme3/06_erreurs_usps_6_vs_all.png", [Erreurs train et test pour USPS 6 vs all.])
+#fig("figures_tme3/06_erreurs_usps_6_vs_all.png", [Erreurs d'apprentissage et de test pour la classification 6 contre toutes les autres classes.])
 
-#fig("figures_tme3/07_poids_usps_6_vs_all.png", [Matrice de poids pour USPS 6 vs all.])
+#fig("figures_tme3/07_poids_usps_6_vs_all.png", [Matrice de poids apprise pour séparer le chiffre 6 de toutes les autres classes.])
 
 La matrice de poids est moins facile à interpréter que dans le cas 6 contre 9, car la classe négative regroupe plusieurs chiffres différents.
 
@@ -388,132 +420,168 @@ La matrice de poids est moins facile à interpréter que dans le cas 6 contre 9,
 
 Nous comparons ensuite trois variantes d'apprentissage.
 
-#fig("figures_tme3/08_comparaison_batch_stochastic_minibatch.png", [Comparaison des descentes batch, stochastique et mini-batch.])
+#figwide("figures_tme3/08_comparaison_batch_stochastic_minibatch.png", [Comparaison des coûts moyens pour les descentes batch, stochastique et mini-batch sur USPS 6 contre 9.])
 
 #table(
-  columns: 4,
-  inset: 6pt,
-  align: center,
-  [Méthode], [Coût final], [Score train], [Score test],
-  [Batch complet], [0.0001], [0.995], [0.988],
-  [Stochastique], [0.0000], [1.000], [0.997],
-  [Mini-batch 32], [0.0000], [1.000], [1.000],
+columns: 4,
+inset: 6pt,
+align: center,
+[Méthode], [Coût final], [Score train], [Score test],
+[Batch complet], [0.0001], [0.996], [0.991],
+[Stochastique], [0.0000], [1.000], [0.997],
+[Mini-batch 32], [0.0000], [1.000], [0.994],
 )
 
-Les trois méthodes convergent bien sur ce problème. Le mini-batch donne ici le meilleur score test. La descente stochastique et la descente mini-batch progressent vite, car elles effectuent plus de mises à jour pendant une époque.
+Les trois méthodes convergent bien sur ce problème. Le mini-batch et la descente stochastique progressent vite, car ils effectuent davantage de mises à jour pendant une époque.
+
+== Effet du bruit sur la convergence
+
+L'énoncé demande aussi de comparer la vitesse de convergence en fonction du bruit dans le jeu de données. Le coût perceptron peut devenir nul très vite lorsque les données sont séparables. Pour rendre la comparaison plus lisible, on trace ici l'erreur d'apprentissage au cours des époques.
+
+#figure(
+grid(
+columns: 3,
+gutter: 8pt,
+[#image("figures_tme3/15_bruit_erreur_epsilon0.2.png", width: 100%)],
+[#image("figures_tme3/15_bruit_erreur_epsilon0.6.png", width: 100%)],
+[#image("figures_tme3/15_bruit_erreur_epsilon1.0.png", width: 100%)],
+),
+caption: [Effet du bruit sur l'erreur d'apprentissage pour les descentes batch, stochastique et mini-batch.],
+)
+
+Lorsque le bruit augmente, les classes se recouvrent davantage. L'erreur finale devient plus élevée et les trajectoires sont moins régulières. Les méthodes stochastique et mini-batch peuvent être plus bruitées, car elles utilisent moins d'exemples à chaque mise à jour.
 
 == Projection polynomiale
 
 Un modèle linéaire dans l'espace initial ne peut produire qu'une frontière linéaire. Pour augmenter son expressivité, on projette les données dans un espace de plus grande dimension.
 
 $
-  1, x_1, x_2, dots, x_d, x_1^2, x_1 x_2, dots, x_d^2.
+(1, x_1, x_2, ..., x_d, x_1^2, x_1 x_2, ..., x_d^2).
 $
 
 #table(
-  columns: 3,
-  inset: 6pt,
-  align: center,
-  [Jeu de données], [Score train], [Erreur train],
-  [Deux gaussiennes], [1.000], [0.000],
-  [Quatre gaussiennes], [0.998], [0.002],
-  [Échiquier], [0.505], [0.495],
+columns: 3,
+inset: 6pt,
+align: center,
+[Jeu de données], [Score train], [Erreur train],
+[Deux gaussiennes], [1.000], [0.000],
+[Quatre gaussiennes], [0.995], [0.005],
+[Échiquier], [0.496], [0.504],
 )
 
-#fig("figures_tme3/09_projection_poly_deux_gaussiennes.png", [Projection polynomiale sur deux gaussiennes.])
+#fig("figures_tme3/09_projection_poly_deux_gaussiennes.png", [Frontière obtenue avec une projection polynomiale de degré 2 avec biais sur deux gaussiennes.])
 
-#fig("figures_tme3/09_projection_poly_quatre_gaussiennes.png", [Projection polynomiale sur quatre gaussiennes.])
+#fig("figures_tme3/09_projection_poly_quatre_gaussiennes.png", [Frontière obtenue avec une projection polynomiale de degré 2 avec biais sur quatre gaussiennes.])
 
-#fig("figures_tme3/09_projection_poly_echiquier.png", [Projection polynomiale sur l'échiquier.])
+#fig("figures_tme3/09_projection_poly_echiquier.png", [Frontière obtenue avec une projection polynomiale de degré 2 avec biais sur l'échiquier.])
 
 La projection polynomiale fonctionne très bien pour les deux gaussiennes et les quatre gaussiennes. En revanche, elle échoue sur l'échiquier : le score est proche de 0.5, donc proche du hasard. Une frontière quadratique reste insuffisante pour cette structure.
 
 == Projection gaussienne
 
-Nous utilisons ensuite une projection gaussienne sur des points de base $b_1, dots, b_m$ :
+Nous utilisons ensuite une projection gaussienne sur des points de base $b_1, ..., b_m$ :
 $
-  phi(x) = ( exp(- ||x - b_1||^2 / (2 sigma^2)), dots, exp(- ||x - b_m||^2 / (2 sigma^2)) ).
+phi(x) = ( exp(- ||x - b_1||^2 / (2 sigma^2)), ..., exp(- ||x - b_m||^2 / (2 sigma^2)) ).
 $
 
-#table(
-  columns: 4,
-  inset: 6pt,
-  align: center,
-  [Nombre de points de base], [$sigma$], [Score train], [Erreur train],
-  [20], [0.2], [0.525], [0.475],
-  [20], [1.0], [0.533], [0.467],
-  [80], [0.2], [0.619], [0.381],
-  [80], [1.0], [0.584], [0.416],
+#figure(
+grid(
+columns: 3,
+gutter: 8pt,
+[#image("figures_tme3/16_projection_gaussienne_deux_gaussiennes.png", width: 100%)],
+[#image("figures_tme3/16_projection_gaussienne_quatre_gaussiennes.png", width: 100%)],
+[#image("figures_tme3/16_projection_gaussienne_echiquier.png", width: 100%)],
+),
+caption: [Projection gaussienne sur les trois jeux de données artificielles.],
 )
 
-#fig("figures_tme3/11_projection_gaussienne_type2_base20_sigma0.2.png", [Projection gaussienne avec peu de points de base et petit sigma.])
+La projection gaussienne fonctionne très bien sur les deux gaussiennes et les quatre gaussiennes, mais reste plus difficile à ajuster sur l'échiquier.
 
-#fig("figures_tme3/11_projection_gaussienne_type2_base20_sigma1.0.png", [Projection gaussienne avec peu de points de base et grand sigma.])
+#table(
+columns: 4,
+inset: 6pt,
+align: center,
+[Nombre de points de base], [$sigma$], [Score train], [Erreur train],
+[20], [0.2], [0.491], [0.509],
+[20], [1.0], [0.547], [0.453],
+[80], [0.2], [0.630], [0.370],
+[80], [1.0], [0.557], [0.443],
+)
 
-#fig("figures_tme3/11_projection_gaussienne_type2_base80_sigma0.2.png", [Projection gaussienne avec beaucoup de points de base et petit sigma.])
+#figure(
+grid(
+columns: 2,
+gutter: 10pt,
+[#image("figures_tme3/11_projection_gaussienne_type2_base20_sigma0.2.png", width: 100%)],
+[#image("figures_tme3/11_projection_gaussienne_type2_base80_sigma0.2.png", width: 100%)],
+),
+caption: [Effet du nombre de points de base pour une projection gaussienne avec $sigma = 0.2$ sur l'échiquier.],
+)
 
-#fig("figures_tme3/11_projection_gaussienne_type2_base80_sigma1.0.png", [Projection gaussienne avec beaucoup de points de base et grand sigma.])
-
-La meilleure configuration testée ici est `nb_base = 80` et $sigma = 0.2$, avec un score train de 0.619. L’augmentation du nombre de points de base améliore l’expressivité du modèle. Les performances restent cependant limitées sur l’échiquier.
+La meilleure configuration testée ici est `nb_base = 80` et $sigma = 0.2$. L’augmentation du nombre de points de base améliore l’expressivité du modèle. Un petit $sigma$ donne une influence plus locale des points de base, alors qu’un grand $sigma$ produit une frontière plus lisse. Les points de base avec les plus grands poids se situent surtout près des zones où la frontière doit changer.
 
 == Perte hinge et pénalisation
 
 On remplace ensuite la perte perceptron par une perte hinge pénalisée :
 $
-  ell(w, x, y) = max(0, alpha - y x^T w) + lambda ||w||^2.
+ell(w, x, y) = max(0, alpha - y x^T w) + lambda ||w||^2.
 $
 
 #table(
-  columns: 4,
-  inset: 6pt,
-  align: center,
-  [$alpha$], [$lambda$], [Score train], [Coût final],
-  [0.5], [1e-4], [0.644], [0.3722],
-  [1.0], [1e-4], [0.635], [0.7857],
-  [2.0], [1e-4], [0.617], [1.6716],
-  [1.0], [1e-2], [0.599], [0.9602],
-  [1.0], [1e-1], [0.598], [0.9960],
+columns: 4,
+inset: 6pt,
+align: center,
+[$alpha$], [$lambda$], [Score train], [Coût final],
+[0.5], [1e-4], [0.641], [0.3740],
+[1.0], [1e-4], [0.622], [0.7967],
+[2.0], [1e-4], [0.567], [1.6986],
+[1.0], [1e-2], [0.560], [0.9628],
+[1.0], [1e-1], [0.542], [0.9963],
 )
 
-#fig("figures_tme3/13_hinge_alpha0.5_lambda0.0001.png", [Perte hinge avec alpha=0.5 et lambda=1e-4.])
+#fig("figures_tme3/13_hinge_resume_scores.png", [Score d'apprentissage selon les valeurs de $alpha$ et $lambda$ pour la perte hinge gaussienne.])
 
-#fig("figures_tme3/13_hinge_alpha1.0_lambda0.0001.png", [Perte hinge avec alpha=1.0 et lambda=1e-4.])
-
-#fig("figures_tme3/13_hinge_alpha2.0_lambda0.0001.png", [Perte hinge avec alpha=2.0 et lambda=1e-4.])
-
-#fig("figures_tme3/13_hinge_alpha1.0_lambda0.1.png", [Perte hinge avec alpha=1.0 et lambda=1e-1.])
+#figure(
+grid(
+columns: 2,
+gutter: 10pt,
+[#image("figures_tme3/13_hinge_alpha0.5_lambda0.0001.png", width: 100%)],
+[#image("figures_tme3/13_hinge_alpha1.0_lambda0.1.png", width: 100%)],
+),
+caption: [Deux frontières hinge gaussiennes : faible régularisation à gauche et forte régularisation à droite.],
+)
 
 Lorsque $alpha$ augmente, le coût final augmente car la marge demandée est plus grande. Lorsque $lambda$ augmente, les poids sont davantage pénalisés, ce qui peut entraîner du sous-apprentissage. Ici, le meilleur score parmi les configurations testées est obtenu avec $alpha = 0.5$ et $lambda = 10^(-4)$.
 
+Cette perte est proche de celle utilisée dans les SVM : elle introduit une marge et une pénalisation sur les poids. La différence principale est qu'ici nous optimisons directement notre modèle projeté, alors que les SVM utilisent une formulation standard avec noyaux et vecteurs supports.
+
 == SVM et Grid Search
 
-Enfin, nous utilisons les SVM de `sklearn`. Les paramètres sont choisis par validation croisée avec `GridSearchCV`.
+Enfin, nous utilisons les SVM de `sklearn`. Les paramètres sont choisis par validation croisée avec `GridSearchCV`. Pour l'échiquier, la grille de paramètres a été élargie pour le noyau RBF, car une grille trop petite donnait des résultats trop faibles.
 
-#table(
-  columns: 5,
-  inset: 6pt,
-  align: center,
-  [Données], [Meilleur noyau], [Meilleurs paramètres], [Score test], [Nb vecteurs supports],
-  [Échiquier], [RBF], [`C=1, gamma=10`], [0.807], [550],
-  [USPS 6 vs 9], [RBF], [`C=1, gamma=0.01`], [0.997], [150],
-)
+#fig("figures_tme3/14_svm_echiquier_vecteurs_supports.png", [Frontière de décision du meilleur SVM sur l'échiquier, avec les vecteurs supports indiqués en noir.])
 
-#fig("figures_tme3/14_svm_echiquier_vecteurs_supports.png", [SVM sur l'échiquier avec vecteurs supports.])
+L'énoncé demande aussi comment évolue le nombre de vecteurs supports selon le noyau et les paramètres.
 
-Sur l'échiquier, le SVM RBF obtient un score test de 0.807, nettement supérieur aux projections précédentes. Sur USPS 6 contre 9, le score test atteint 0.997, ce qui est légèrement meilleur que le perceptron simple.
+#figwide("figures_tme3/17_svm_2d_parametres_vecteurs_supports.png", [Comparaison des noyaux SVM sur l'échiquier : score test et nombre de vecteurs supports.])
 
-Les vecteurs supports sont les exemples qui participent directement à la définition de la frontière. Sur l'échiquier, leur nombre est élevé, ce qui reflète la complexité de la frontière.
+#figwide("figures_tme3/18_svm_usps_parametres_vecteurs_supports.png", [Comparaison des noyaux SVM sur USPS 6 contre 9 : score test et nombre de vecteurs supports.])
+
+Les vecteurs supports sont les exemples qui participent directement à la définition de la frontière. Sur l'échiquier, leur nombre est élevé, ce qui reflète la complexité de la frontière. Sur USPS 6 contre 9, certains paramètres donnent un excellent score avec peu de vecteurs supports, alors qu'un noyau trop flexible peut utiliser beaucoup plus de points.
+
+Lorsque `gamma` devient très grand pour le noyau RBF, le modèle devient très local. Le score d'apprentissage peut alors devenir presque parfait tandis que le score test diminue : on observe du sur-apprentissage. Le nombre de vecteurs supports augmente également fortement.
+
+Dans le cas linéaire, on retrouve une frontière proche de celle obtenue avec le perceptron. Les noyaux non linéaires, en particulier RBF, permettent d'obtenir des frontières plus flexibles.
 
 == Conclusion
 
 Ce TME met en évidence les limites et les extensions naturelles des modèles linéaires. Le perceptron fonctionne bien lorsque les données sont presque linéairement séparables, comme pour USPS 6 contre 9. Le cas 6 contre toutes les autres classes est plus difficile, mais reste bien traité.
 
-Les projections polynomiales permettent de résoudre certains problèmes non linéaires simples, comme les quatre gaussiennes, mais échouent sur l'échiquier. Les projections gaussiennes améliorent légèrement les résultats, mais restent limitées avec les paramètres testés. La perte hinge introduit une notion de marge et rapproche le modèle des SVM.
+Les projections polynomiales permettent de résoudre certains problèmes non linéaires simples, comme les quatre gaussiennes, mais échouent sur l'échiquier. Les projections gaussiennes améliorent les résultats sur certains problèmes, mais restent limitées sur l'échiquier avec les paramètres testés. La perte hinge introduit une notion de marge et rapproche le modèle des SVM.
 
 Enfin, les SVM avec noyau RBF donnent les meilleurs résultats sur les données complexes, notamment l'échiquier et USPS 6 contre 9.
 
-
-= TME 5 — Clustering spatial des points d'intérêt parisiens
+= TME 5 : Clustering spatial des points d'intérêt parisiens
 
 == Introduction
 

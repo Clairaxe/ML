@@ -177,9 +177,7 @@ savefig("01_poi.png")
 plt.show()
 
 
-# =========================
 # HISTOGRAMMES
-# =========================
 
 for s in [5,10,20,40]:
     f = Histogramme(steps=s)
@@ -257,9 +255,7 @@ integrale = np.sum(res) * dx * dy
 print("Intégrale histogramme =", integrale)
 
 
-# =========================
 # METHODES A NOYAUX
-# =========================
 
 X_train, X_test = train_test_split(geo_mat,test_size=0.3,random_state=0)
 
@@ -323,9 +319,7 @@ print("  meilleur sigma =", sigma_list[best_idx])
 print()
 
 
-# =========================
 # NADARAYA-WATSON
-# =========================
 
 X_train, X_test, y_train, y_test = train_test_split(
     geo_mat,notes,test_size=0.3,random_state=0

@@ -1,8 +1,3 @@
-# =========================
-# TME 5 — CLUSTERING SPATIAL DES POI PARISIENS
-# Cellule complète : données + figures + prints + archive
-# =========================
-
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -14,10 +9,6 @@ from matplotlib.patches import Rectangle
 from sklearn.cluster import KMeans
 from sklearn.preprocessing import StandardScaler
 
-
-# =========================
-# DOSSIER FIGURES
-# =========================
 
 FIG_DIR = Path("figures_tme5")
 FIG_DIR.mkdir(exist_ok=True)
@@ -31,11 +22,6 @@ def print_section(title):
     print("=" * len(title))
     print(title)
     print("=" * len(title))
-
-
-# =========================
-# CHARGEMENT DES DONNÉES
-# =========================
 
 table_poi = pd.read_csv("data/poi-paris.csv")
 districts = pd.read_csv("data/districts-paris.csv", sep=",")
@@ -65,9 +51,7 @@ for name, val in type_means.head(8).items():
     print(f"  {name} : {val:.3f}")
 
 
-# =========================
-# FIGURE 1 — POIS
-# =========================
+# FIGURE 1 : POIS
 
 plt.figure(figsize=(7, 6))
 draw_districts()
@@ -79,9 +63,8 @@ savefig("01_poi_paris.png")
 plt.show()
 
 
-# =========================
 # DISCRÉTISATION EN GRILLE
-# =========================
+
 
 N = 20
 K_GRID = 6
@@ -146,9 +129,7 @@ print("K retenu pour la grille :", K_GRID)
 print("Inertie KMeans grille :", round(km_grid.inertia_, 4))
 
 
-# =========================
-# FIGURE 2 — CLUSTERING GRILLE
-# =========================
+# FIGURE 2 : CLUSTERING GRILLE
 
 plt.figure(figsize=(7, 6))
 draw_districts()
@@ -181,16 +162,14 @@ savefig("02_clustering_grille.png")
 plt.show()
 
 
-# =========================
-# FIGURE 3 — CENTROÏDES GRILLE
-# =========================
+# FIGURE 3 : CENTROÏDES GRILLE
 
 plt.figure(figsize=(10, 5))
 plt.imshow(km_grid.cluster_centers_, aspect="auto")
 plt.colorbar(label="proportion moyenne")
 plt.xticks(np.arange(len(type_cols)), type_cols, rotation=90)
 plt.yticks(np.arange(K_GRID), [f"cluster {k}" for k in range(K_GRID)])
-plt.title("Centroïdes des clusters — grille")
+plt.title("Centroïdes des clusters : grille")
 savefig("03_centroides_grille.png")
 plt.show()
 
@@ -202,9 +181,7 @@ for k, center in enumerate(km_grid.cluster_centers_):
     print(f"  cluster {k} : {top}")
 
 
-# =========================
-# FIGURE 4 — ELBOW GRILLE
-# =========================
+# FIGURE 4 : ELBOW GRILLE
 
 K_values_grid = range(1, 15)
 inertias_grid = []
@@ -218,7 +195,7 @@ plt.figure(figsize=(7, 5))
 plt.plot(list(K_values_grid), inertias_grid, marker="o")
 plt.xlabel("Nombre de clusters K")
 plt.ylabel("Inertie")
-plt.title("Courbe elbow — grille")
+plt.title("Courbe elbow : grille")
 plt.grid()
 savefig("04_elbow_grille.png")
 plt.show()
@@ -230,9 +207,7 @@ for K, inertia in zip(K_values_grid, inertias_grid):
 print("Suggestion pour le rapport : le coude semble raisonnable autour de K = 5 ou K = 6.")
 
 
-# =========================
 # QUANTIZATION SPATIALE
-# =========================
 
 K_GEO = 100
 coords = table_poi[["longitude", "latitude"]].values
@@ -248,9 +223,7 @@ print("Nombre de régions spatiales :", K_GEO)
 print("Inertie spatiale :", round(km_spatial.inertia_, 6))
 
 
-# =========================
-# FIGURE 5 — QUANTIZATION SPATIALE
-# =========================
+# FIGURE 5 : QUANTIZATION SPATIALE
 
 plt.figure(figsize=(7, 6))
 draw_districts()
@@ -278,9 +251,7 @@ savefig("05_quantization_spatiale.png")
 plt.show()
 
 
-# =========================
 # DESCRIPTION DES RÉGIONS SPATIALES
-# =========================
 
 region_desc = np.zeros((K_GEO, nb_types))
 region_counts = np.zeros(K_GEO)
@@ -309,9 +280,7 @@ print("Taille max des régions spatiales :", int(region_counts.max()))
 print("Taille moyenne des régions spatiales :", round(region_counts.mean(), 2))
 
 
-# =========================
-# FIGURE 6 — CLUSTERING RÉGIONS SPATIALES
-# =========================
+# FIGURE 6 : CLUSTERING RÉGIONS SPATIALES
 
 plt.figure(figsize=(7, 6))
 draw_districts()
@@ -335,16 +304,14 @@ savefig("06_clustering_regions_spatiales.png")
 plt.show()
 
 
-# =========================
-# FIGURE 7 — CENTROÏDES RÉGIONS SPATIALES
-# =========================
+# FIGURE 7 : CENTROÏDES RÉGIONS SPATIALES
 
 plt.figure(figsize=(10, 5))
 plt.imshow(km_regions.cluster_centers_, aspect="auto")
 plt.colorbar(label="proportion moyenne")
 plt.xticks(np.arange(len(type_cols)), type_cols, rotation=90)
 plt.yticks(np.arange(K_REGIONS), [f"cluster {k}" for k in range(K_REGIONS)])
-plt.title("Centroïdes des clusters — régions spatiales")
+plt.title("Centroïdes des clusters : régions spatiales")
 savefig("07_centroides_regions_spatiales.png")
 plt.show()
 
@@ -356,9 +323,7 @@ for k, center in enumerate(km_regions.cluster_centers_):
     print(f"  cluster {k} : {top}")
 
 
-# =========================
-# FIGURE 8 — ELBOW RÉGIONS SPATIALES
-# =========================
+# FIGURE 8 : ELBOW RÉGIONS SPATIALES
 
 K_values_regions = range(1, 15)
 inertias_regions = []
@@ -372,7 +337,7 @@ plt.figure(figsize=(7, 5))
 plt.plot(list(K_values_regions), inertias_regions, marker="o")
 plt.xlabel("Nombre de clusters K")
 plt.ylabel("Inertie")
-plt.title("Courbe elbow — régions spatiales")
+plt.title("Courbe elbow : régions spatiales")
 plt.grid()
 savefig("08_elbow_regions_spatiales.png")
 plt.show()
@@ -384,9 +349,7 @@ for K, inertia in zip(K_values_regions, inertias_regions):
 print("Suggestion pour le rapport : le coude semble raisonnable autour de K = 5 ou K = 6.")
 
 
-# =========================
-# FIGURE 9 — CORRÉLATIONS ENTRE TYPES
-# =========================
+# FIGURE 9 : CORRÉLATIONS ENTRE TYPES
 
 corr_df = pd.DataFrame(region_desc, columns=type_cols).corr()
 
@@ -413,9 +376,7 @@ for a, b, c in corr_pairs[:8]:
     print(f"  {a} / {b} : {c:.3f}")
 
 
-# =========================
-# FIGURE 10 — STANDARDISATION
-# =========================
+# FIGURE 10 : STANDARDISATION
 
 scaler = StandardScaler()
 region_desc_std = scaler.fit_transform(region_desc)
@@ -449,15 +410,3 @@ print("Inertie avant standardisation :", round(km_regions.inertia_, 4))
 print("Inertie après standardisation :", round(km_std.inertia_, 4))
 print("K utilisé :", K_REGIONS)
 print("Remarque : les inerties ne sont pas directement comparables car les échelles ont changé.")
-
-
-# =========================
-# ARCHIVE TÉLÉCHARGEABLE
-# =========================
-
-zip_path = make_archive("figures_tme5", "zip", FIG_DIR)
-
-print_section("Archive")
-print("Figures sauvegardées dans :", FIG_DIR)
-print("Archive créée :", zip_path)
-print("Tu peux télécharger figures_tme5.zip depuis l'explorateur de fichiers de Jupyter.")

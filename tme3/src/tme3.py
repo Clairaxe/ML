@@ -4,11 +4,6 @@ from pathlib import Path
 
 from mltools import plot_data, plot_frontiere, make_grid, gen_arti
 
-
-# ============================================================
-# DOSSIER FIGURES
-# ============================================================
-
 FIG_DIR = Path("figures_tme3")
 FIG_DIR.mkdir(exist_ok=True)
 
@@ -18,10 +13,7 @@ def savefig(name):
     plt.savefig(FIG_DIR / name, dpi=300, bbox_inches="tight")
 
 
-# ============================================================
 # COUTS ET GRADIENTS
-# ============================================================
-
 
 def perceptron_loss(w, datax, datay):
     """Perte perceptron, valeur par exemple."""
@@ -53,10 +45,7 @@ def hinge_grad(w, datax, datay, alpha=1.0, lamb=0.0):
     return -datax.T.dot(mask * datay) / len(datay) + 2 * lamb * w
 
 
-# ============================================================
 # PROJECTIONS
-# ============================================================
-
 
 def proj_identite(datax):
     return datax
@@ -101,9 +90,7 @@ def proj_gauss(datax, base, sigma):
     return np.exp(-distances / (2 * sigma ** 2))
 
 
-# ============================================================
 # OUTILS USPS
-# ============================================================
 
 
 def binarize_labels(y, neg, pos):
@@ -135,9 +122,7 @@ def show_usps(data, title=None):
     plt.axis("off")
 
 
-# ============================================================
 # CLASSE LINEAIRE
-# ============================================================
 
 
 class Lineaire(object):
@@ -232,10 +217,7 @@ class Lineaire(object):
         return np.mean(self.predict(datax) == datay.reshape(-1, 1))
 
 
-# ============================================================
 # FIGURES
-# ============================================================
-
 
 def plot_loss(model, title, filename):
     plt.figure()
@@ -295,10 +277,7 @@ def plot_frontiere_modele(datax, datay, model, title, filename):
     plt.show()
 
 
-# ============================================================
 # EXPERIENCES USPS
-# ============================================================
-
 
 def experience_usps_6_vs_9():
     uspsdatatrain = "data/USPS_train.txt"
@@ -502,9 +481,7 @@ def experience_batch_noise_comparison():
         plt.show()
 
 
-# ============================================================
 # PROJECTIONS
-# ============================================================
 
 
 def experience_projection_poly():
@@ -657,9 +634,7 @@ def experience_projection_gaussienne_all_data():
         plt.show()
 
 
-# ============================================================
 # HINGE : ALPHA ET LAMBDA
-# ============================================================
 
 
 def experience_hinge_alpha_lambda():
@@ -734,9 +709,7 @@ def experience_hinge_alpha_lambda():
     return rows
 
 
-# ============================================================
 # SVM ET GRID SEARCH
-# ============================================================
 
 
 def _plot_svm_summary(rows, filename, title):
@@ -950,9 +923,7 @@ def experience_svm_support_vectors_usps(datax, testx, datay, testy):
     return rows
 
 
-# ============================================================
 # MAIN
-# ============================================================
 
 
 if __name__ == "__main__":
