@@ -4,9 +4,13 @@
   title: [Rapport des TME de Machine Learning],
   authors: (
     (
-      name: "Claire Chambaz 21522431 and Camila Maura Llauri 21522444",
+      name: "Claire Chambaz (21522431) et Camila Maura Llauri (21522444)",
     ),
   ),
+)
+
+#set par(
+  spacing: 1em,
 )
 
 #let fig(path, caption) = figure(
@@ -21,20 +25,14 @@ caption: caption,
 
 = TME 1 : Estimation de densité
 
-== Objectif
+== Introduction
 
-Nous étudions deux méthodes d’estimation de densité : l’histogramme et la méthode à noyaux (KDE), sur des données de points d’intérêt (POI) à Paris. Nous utilisons également l’estimateur de Nadaraya–Watson pour prédire la note d’un lieu à partir de sa position.
+On étudie deux méthodes d’estimation de densité : l’histogramme et la méthode à noyaux (KDE), sur des données de points d’intérêt (POI) à Paris. On  utilise également l’estimateur de Nadaraya-Watson pour prédire la note d’un lieu à partir de sa position.
 
-== Données et visualisation
-
-Les données proviennent de l’API Google Places et contiennent les coordonnées GPS de différents types de POI.
-
-Le jeu de données contient :
-- 4888 bars
+Les données proviennent de l’API Google Places et contiennent les coordonnées GPS de différents types de POI. Le jeu de données contient :
+- 4888 bars (La note moyenne des bars est ≈ 3.10)
 - 6914 restaurants
 - 556 boîtes de nuit
-
-La note moyenne des bars est ≈ 3.10.
 
 #figure(
   image("figures_tme1/01_poi.png", width: 80%),
@@ -55,46 +53,52 @@ L’estimateur par histogramme découpe l’espace en cellules régulières.
   caption: [Densité estimée par histogramme pour différents nombres de cellules.]
 )
 
-Pour un petit nombre de cellules (steps=5), la densité est trop grossière.  
-Pour un grand nombre (steps=40), elle devient bruitée.
+Lorsque steps augmente, la log-vraisemblance d’apprentissage augmente : l’histogramme devient de plus en plus précis sur les données d’apprentissage. En revanche, la log-vraisemblance test commence par augmenter puis diminue fortement pour les grandes valeurs de steps. Cela indique du sur-apprentissage : les cellules deviennent trop petites et l’estimateur généralise moins bien.
 
-→ Une valeur intermédiaire est préférable.
+- Pour un petit nombre de cellules (steps=5), la densité est trop grossière.  
+- Pour un grand nombre (steps=40), elle devient bruitée.
 
-Cette observation est confirmée quantitativement :
-- meilleur steps (test) = *10* pour les bars
+#figure(
+  table(
+    columns: 4,
+    inset: 6pt,
+    align: center,
+    [steps], [Log-vraisemblance train], [Log-vraisemblance test], [Intégrale],
+    [5], [3.7832], [3.7752], [1.0203],
+    [10], [3.8732], [3.8431], [1.0203],
+    [20], [4.0197], [3.7194], [1.0203],
+    [30], [4.1711], [3.1956], [1.0135],
+    [40], [4.3123], [2.1981], [1.0157],
+  ),
+  caption: [Influence du nombre de cellules sur la log-vraisemblance moyenne et l’intégrale numérique de l’histogramme.]
+)
 
-== Vérification de la densité
-
-On vérifie que l’intégrale de la densité est proche de 1 :
-
-- intégrale ≈ *1.02*
-
-Cela confirme que l’estimateur est bien une densité.
+*La meilleure valeur empirique est ici : steps = 10*
+Cette valeur correspond également au meilleur compromis observé visuellement sur les figures de densité. *Les intégrales numériques restent proches de 1 pour toutes les discrétisations testées.* L’estimateur se comporte donc bien comme une densité de probabilité.
 
 == Choix du nombre de cellules
 
-#figure(
-  image("figures_tme1/03_hist_ll.png", width: 75%),
-  caption: [Log-vraisemblance moyenne en apprentissage et en test pour l'estimation par histogramme.]
-)
-
-La log-vraisemblance test est maximale pour :
-- *steps = 10* (bars)
-
-== Cas des données rares : boîtes de nuit
-
-Les boîtes de nuit sont moins nombreuses.
+Pour choisir le nombre de cellules, on compare la log-vraisemblance moyenne en apprentissage et en test pour plusieurs valeurs de steps.
 
 #figure(
-  image("figures_tme1/04_hist_ll_night_club.png", width: 75%),
-  caption: [Log-vraisemblance moyenne en apprentissage et en test pour les boîtes de nuit.]
+  grid(
+    columns: 2,
+    gutter: 10pt,
+    [#image("figures_tme1/03_hist_ll.png", width: 100%)],
+    [#image("figures_tme1/04_hist_ll_night_club.png", width: 100%)],
+  ),
+  caption: [Log-vraisemblance moyenne en apprentissage et en test pour les bars et les boîtes de nuit.]
 )
 
-- meilleur steps = *5*
+Pour les bars, la log-vraisemblance d’apprentissage augmente avec steps, car l’histogramme devient plus fin et s’adapte mieux aux données d’apprentissage. En revanche, la log-vraisemblance test atteint son maximum pour steps = 10, puis diminue. Cela indique que les grandes valeurs de steps produisent du sur-apprentissage.
 
-→ Une discrétisation plus grossière est nécessaire pour éviter des cellules vides.
+Pour les boîtes de nuit, le phénomène est encore plus marqué. Comme il y a beaucoup moins de données, les grandes valeurs de steps créent de nombreuses cellules vides ou presque vides. La log-vraisemblance test chute donc très vite.
 
-Le meilleur hyperparamètre n’est donc pas du même ordre que pour les bars.
+Les meilleurs hyperparamètres empiriques sont :
+- steps = 10 pour les bars ;
+- steps = 5 pour les boîtes de nuit.
+
+Le meilleur nombre de cellules est donc plus petit pour les données rares.
 
 == Estimation par noyaux (KDE)
 
@@ -105,81 +109,63 @@ Le meilleur hyperparamètre n’est donc pas du même ordre que pour les bars.
     [#image("figures_tme1/06_kde_density_0.005.png", width: 100%)],
     [#image("figures_tme1/06_kde_density_0.02.png", width: 100%)],
   ),
-  caption: [Estimation de densité estimée par KDE gaussienne pour différentes valuers de σ.]
+  caption: [Estimation de densité estimée par KDE gaussienne pour différentes valuers de $sigma$.]
 )
 
-Un petit σ donne une densité bruitée.  
-Un grand σ donne une densité trop lissée.
+Un petit $sigma$ donne une densité bruitée.  
+Un grand $sigma$ donne une densité trop lissée.
 
 #figure(
   image("figures_tme1/05_kde_ll_gaussian.png", width: 70%),
-  caption: [Log-vraisemblance moyenne pour la KDE gaussienne en fonction de σ.]
+  caption: [Log-vraisemblance moyenne pour la KDE gaussienne en fonct° de $sigma$.]
 )
 
 Résultats :
-- meilleur σ (gaussien) = *0.003*
-- meilleur σ (uniforme) = *0.02*
+- meilleur $sigma$ (gaussien) = *0.003*
+- meilleur $sigma$ (uniforme) = *0.02*
 
 Le noyau gaussien produit une densité plus lisse que le noyau uniforme.
 Les intégrales obtenues sont proches de 1, on obtient donc bien une densité.
 
-== Régression par Nadaraya–Watson
+== Régression par Nadaraya-Watson
 
 #figure(
   image("figures_tme1/08_nadaraya_mse.png", width: 70%),
-  caption: [Erreur quadratique moyenne de l'estimateur Nadaraya-Watson selon σ.]
+  caption: [Erreur quadratique moyenne de Nadaraya-Watson en fonct° de $sigma$.]
 )
 
 Résultat :
-- meilleur σ = *0.01*
+- meilleur $sigma$ = *0.01*
 - MSE minimale ≈ *3.49*
-
-→ Petit σ : sur-apprentissage  
-→ Grand σ : sous-apprentissage
 
 == Conclusion
 
 Le choix des hyperparamètres est crucial :
 
 - Histogramme : nombre de cellules
-- KDE : σ
-- Nadaraya-Watson : σ
+- KDE : $sigma$
+- Nadaraya-Watson : $sigma$
 
-Les résultats illustrent le compromis biais–variance.  
+Les résultats illustrent le compromis biais-variance.  
 La validation sur un ensemble de test permet de choisir un modèle qui généralise correctement.
 
 = TME 2 : Descente de gradient
 
-== Objectif
+== Introduction
 
-Ce TME étudie la descente de gradient pour deux fonctions de coût : la perte aux moindres carrés et la perte logistique. L’objectif est d’observer la convergence de l’algorithme, l’effet du pas de gradient, et les limites d’un classifieur linéaire selon la structure des données.
-
-== Fonctions de coût et gradients
+On étudie la descente de gradient pour deux fonctions de coût : la perte aux moindres carrés et la perte logistique. L’objectif est d’observer la convergence de l’algorithme, l’effet du pas de gradient, et les limites d’un classifieur linéaire selon la structure des données.
 
 #figure(
   grid(
     columns: 2,
     gutter: 10pt,
-
-    [
-      #image("figures_tme2/00_frontiere_aleatoire.png", width: 100%)
-    ],
-
-    [
-      #image("figures_tme2/00_surface_mse.png", width: 100%)
-    ],
+    [#image("figures_tme2/00_frontiere_aleatoire.png", width: 100%)],
+    [#image("figures_tme2/00_surface_mse.png", width: 100%)],
   ),
-  caption: [
-    Exemple de frontière de décision aléatoire et visualisation de la surface du coût MSE.
-  ],
+  caption: [Exemple de frontière de décision aléatoire et visualisation de la surface du coût MSE.]
 )
 
-La surface de coût MSE présente une structure quadratique convexe.
-La frontière aléatoire illustre l’effet du vecteur de poids sur la séparation des classes.
-
-Nous avons implémenté les fonctions `mse`, `reglog`, ainsi que leurs gradients. Les fonctions prennent en entrée une matrice d’exemples $X in RR^(n times d)$, un vecteur de poids $w in RR^(d times 1)$ et un vecteur de labels $Y in RR^(n times 1)$.
-
-Les tests fournis par `check_fonctions()` sont validés. Cela permet de vérifier que les coûts et gradients sont cohérents avant de lancer la descente de gradient.
+La surface de coût MSE présente une structure quadratique convexe. La frontière aléatoire illustre l’effet du vecteur de poids sur la séparation des classes.
 
 == Deux gaussiennes
 
@@ -189,34 +175,32 @@ On commence par tester l’algorithme sur un problème simple à deux gaussienne
   grid(
     columns: 2,
     gutter: 10pt,
-
-    [
-      #image("figures_tme2/01_frontiere_mse_deux_gaussiennes.png", width: 100%)
-    ],
-
-    [
-      #image("figures_tme2/02_frontiere_logistique_deux_gaussiennes.png", width: 100%)
-    ],
+    [#image("figures_tme2/01_frontiere_mse_deux_gaussiennes.png", width: 100%)],
+    [#image("figures_tme2/02_frontiere_logistique_deux_gaussiennes.png", width: 100%)],
   ),
-  caption: [Frontières de décision obtenues avec la perte MSE et la perte logistique.],
+  caption: [Frontières de décision obtenues avec la perte MSE et la perte logistique sur deux gaussiennes.]
 )
 
-Les deux méthodes trouvent une frontière linéaire correcte.
+Les deux méthodes trouvent une bonne frontière linéaire.
 
-Résultats :
-- coût final MSE ≈ 0.053
-- coût final logistique ≈ 0.016
-- accuracy MSE = 1.00
-- accuracy logistique = 1.00
+#figure(
+  table(
+    columns: 4,
+    inset: 6pt,
+    align: center,
+    [Perte], [Coût initial], [Coût final], [Accuracy],
+    [MSE], [1.000], [0.053], [1.00],
+    [Logistique], [0.693], [0.016], [1.00],
+  ),
+  caption: [Résultats de la descente de gradient sur deux gaussiennes.]
+)
 
-La perte logistique est plus adaptée à la classification, car elle pénalise directement les erreurs via le terme $y f(x)$.
+La perte logistique est plus adaptée à la classification, car elle pénalise directement les erreurs via le terme $y f(x)$. Le coût diminue au cours des itérations pour les deux pertes.
 
 #figure(
   image("figures_tme2/03_cout_deux_gaussiennes.png", width: 75%),
-  caption: [Évolution du coût moyen au cours des itérations.],
+  caption: [Évolution du coût moyen pour la MSE et la perte logistique sur deux gaussiennes.]
 )
-
-Le coût diminue au cours des itérations pour les deux pertes.
 
 == Effet du pas de gradient
 
@@ -224,14 +208,22 @@ On fait varier le pas de gradient $epsilon$ afin d’observer son effet.
 
 #figure(
   image("figures_tme2/04_effet_pas_gradient.png", width: 75%),
-  caption: [Effet du pas de gradient sur la convergence.],
+  caption: [Effet du pas de gradient sur la convergence de la perte logistique.]
 )
 
-Résultats :
-- $epsilon = 0.001$ : coût final ≈ 0.646 (convergence lente)
-- $epsilon = 0.01$ : coût final ≈ 0.382
-- $epsilon = 0.1$ : coût final ≈ 0.067
-- $epsilon = 1.0$ : coût final ≈ 0.009 (convergence rapide)
+#figure(
+  table(
+    columns: 3,
+    inset: 6pt,
+    align: center,
+    [$epsilon$], [Coût final], [Interprétation],
+    [0.001], [0.646], [Convergence lente],
+    [0.01], [0.382], [Convergence encore lente],
+    [0.1], [0.067], [Convergence rapide],
+    [1.0], [0.009], [Convergence très rapide ici],
+  ),
+  caption: [Influence du pas de gradient sur le coût final.]
+)
 
 Dans cette expérience, l’accuracy reste égale à 1.00 pour toutes les valeurs testées de $epsilon$.
 
@@ -245,55 +237,48 @@ On compare un cas presque séparable avec un cas bruité.
   grid(
     columns: 2,
     gutter: 10pt,
-
-    [
-      #image("figures_tme2/05_frontiere_separable.png", width: 100%)
-    ],
-
-    [
-      #image("figures_tme2/06_frontiere_non_separable.png", width: 100%)
-    ],
+    [#image("figures_tme2/05_frontiere_separable.png", width: 100%)],
+    [#image("figures_tme2/06_frontiere_non_separable.png", width: 100%)],
   ),
-  caption: [Frontières de décision dans un cas séparable et non séparable.],
+  caption: [Frontières de décision dans un cas presque séparable et dans un cas bruité non séparable.]
 )
 
-Résultats :
-- cas séparable : coût ≈ 0.016, accuracy = 1.00
-- cas non séparable : coût ≈ 0.232, accuracy ≈ 0.895
+#figure(
+  table(
+    columns: 3,
+    inset: 6pt,
+    align: center,
+    [Cas], [Coût final], [Accuracy],
+    [Presque séparable], [0.016], [1.00],
+    [Non séparable], [0.232], [0.895],
+  ),
+  caption: [Comparaison entre le cas presque séparable et le cas non séparable.]
+)
 
-Dans le cas non séparable, certaines observations sont forcément mal classées.
+Dans le cas non séparable, certaines observations sont forcément mal classées, car les classes se recouvrent.
 
 #figure(
   image("figures_tme2/07_cout_separable_vs_non_separable.png", width: 75%),
-  caption: [Évolution du coût moyen dans les cas séparable et non séparable.]
+  caption: [Évolution du coût moyen dans les cas presque séparable et non séparable.]
 )
 
 Le coût reste plus élevé lorsque les classes se recouvrent.
 
 == Surface de coût et trajectoire de descente
 
-On visualise la fonction de coût dans l’espace des poids.
-
 #figure(
   grid(
     columns: 2,
     gutter: 10pt,
-
-    [
-      #image("figures_tme2/08_surface_mse_trajectoire.png", width: 100%)
-    ],
-
-    [
-      #image("figures_tme2/09_surface_logistique_trajectoire.png", width: 100%)
-    ],
+    [#image("figures_tme2/08_surface_mse_trajectoire.png", width: 100%)],
+    [#image("figures_tme2/09_surface_logistique_trajectoire.png", width: 100%)],
   ),
   caption: [Surface du coût et trajectoire des poids au cours de la descente de gradient.]
 )
 
-La trajectoire montre que les poids évoluent progressivement vers une zone de faible coût.  
-La surface MSE est quadratique, tandis que la surface logistique est plus aplatie.
+On visualise la fonction de coût dans l’espace des poids. La trajectoire montre l’évolution des poids au cours des itérations. Les figures sont moins lisibles pour la perte logistique, car les poids peuvent continuer à augmenter lorsque les données sont presque séparables.
 
-== Autres types de données
+== Autres types de données artificielles
 
 On teste la régression logistique sur des données non linéaires.
 
@@ -301,21 +286,23 @@ On teste la régression logistique sur des données non linéaires.
   grid(
     columns: 2,
     gutter: 10pt,
-
-    [
-      #image("figures_tme2/10_frontiere_logistique_quatre_gaussiennes.png", width: 100%)
-    ],
-
-    [
-      #image("figures_tme2/10_frontiere_logistique_echiquier.png", width: 100%)
-    ],
+    [#image("figures_tme2/10_frontiere_logistique_quatre_gaussiennes.png", width: 100%)],
+    [#image("figures_tme2/10_frontiere_logistique_echiquier.png", width: 100%)],
   ),
   caption: [Frontières de décision obtenues par régression logistique sur des données non linéaires.]
 )
 
-Résultats :
-- quatre gaussiennes : accuracy ≈ 0.507, coût ≈ 0.693
-- échiquier : accuracy ≈ 0.504, coût ≈ 0.693
+#figure(
+  table(
+    columns: 3,
+    inset: 6pt,
+    align: center,
+    [Données], [Coût final], [Accuracy],
+    [Quatre gaussiennes], [0.693], [0.507],
+    [Échiquier], [0.693], [0.504],
+  ),
+  caption: [Résultats de la régression logistique sur les données non linéaires.]
+)
 
 Ces performances sont proches du hasard.
 
@@ -323,19 +310,13 @@ Ces performances sont proches du hasard.
   grid(
     columns: 2,
     gutter: 10pt,
-
-    [
-      #image("figures_tme2/11_cout_logistique_quatre_gaussiennes.png", width: 100%)
-    ],
-
-    [
-      #image("figures_tme2/11_cout_logistique_echiquier.png", width: 100%)
-    ],
+    [#image("figures_tme2/11_cout_logistique_quatre_gaussiennes.png", width: 100%)],
+    [#image("figures_tme2/11_cout_logistique_echiquier.png", width: 100%)],
   ),
-  caption: [Évolution du coût sur données non linéaires.],
+  caption: [Évolution du coût logistique sur les données non linéaires.]
 )
 
-Le modèle linéaire ne peut pas capturer des frontières non linéaires.
+Les coûts restent proches de $log(2)$, ce qui correspond à une classification presque aléatoire. Cela confirme que le modèle linéaire ne peut pas capturer des frontières non linéaires comme celles des quatre gaussiennes ou de l’échiquier.
 
 == Conclusion
 
@@ -344,18 +325,13 @@ La descente de gradient permet d’optimiser efficacement une fonction de coût 
 Les expériences montrent :
 - l’importance du pas de gradient,
 - l’impact du bruit,
-- et les limites fondamentales d’un modèle linéaire face à des données non linéaires.
-
+- les limites d’un modèle linéaire face à des données non linéaires.
 
 = TME 3 : Perceptron et SVM
 
 == Introduction
 
-L'objectif de ce TME est d'étudier plusieurs méthodes de classification binaire : le perceptron, ses variantes d'apprentissage par descente de gradient, les projections non linéaires, la perte hinge pénalisée, puis les SVM. Nous utilisons d'abord des données artificielles en deux dimensions, puis les données USPS de chiffres manuscrits.
-
-Dans tout le rapport, les labels sont encodés en $-1$ et $+1$. Le classifieur linéaire prédit donc le signe de $x^T w$.
-
-== Perceptron et classe linéaire
+On étudie plusieurs méthodes de classification binaire : le perceptron, ses variantes d'apprentissage par descente de gradient, les projections non linéaires, la perte hinge pénalisée, puis les SVM. On utilise d'abord des données artificielles en deux dimensions, puis les données USPS de chiffres manuscrits.
 
 La perte perceptron utilisée est
 $
@@ -364,11 +340,9 @@ $
 
 Cette perte est nulle lorsque l'exemple est bien classé avec une marge positive, et strictement positive lorsqu'il est mal classé. Le gradient utilisé dans le code correspond à la moyenne des contributions des exemples mal classés.
 
-Le modèle est implémenté dans une classe `Lineaire`. Cette classe permet de changer la fonction de coût, le gradient, le nombre d'itérations, le pas de gradient, la projection utilisée, ainsi que le type d'apprentissage : batch complet, stochastique ou mini-batch.
-
 == Données USPS : classification 6 contre 9
 
-Nous isolons d'abord deux classes, les chiffres 6 et 9. Quelques exemples des images utilisées sont représentés ci-dessous.
+On isole d'abord deux classes, les chiffres 6 et 9. Quelques exemples des images utilisées sont représentés ci-dessous.
 
 #fig("figures_tme3/01_exemples_usps_6_vs_9.png", [Exemples USPS utilisés pour la classification 6 contre 9.])
 
@@ -384,9 +358,15 @@ align: center,
 
 Le modèle distingue donc très bien les deux chiffres.
 
-#fig("figures_tme3/02_loss_usps_6_vs_9.png", [Évolution du coût moyen du perceptron sur USPS 6 contre 9.])
-
-#fig("figures_tme3/03_erreurs_usps_6_vs_9.png", [Erreurs d'apprentissage et de test du perceptron sur USPS 6 contre 9.])
+#figure(
+  grid(
+    rows: 2,
+    gutter: 10pt,
+    [#image("figures_tme3/02_loss_usps_6_vs_9.png", width: 75%)],
+    [#image("figures_tme3/03_erreurs_usps_6_vs_9.png", width: 75%)],
+  ),
+  caption: [*En haut:* Évolution du coût moyen du perceptron sur USPS 6 contre 9. *En bas:* Erreurs d'apprentissage et de test du perceptron sur USPS 6 contre 9.]
+)
 
 L'erreur de test reste très proche de l'erreur d'apprentissage. On ne constate donc pas de sur-apprentissage marqué.
 
@@ -396,7 +376,8 @@ Cette matrice s'interprète comme un masque discriminant. Les pixels de poids po
 
 == Classification 6 contre toutes les autres classes
 
-On entraîne ensuite un perceptron pour séparer le chiffre 6 de tous les autres chiffres. Le problème est plus difficile, car la classe négative est très hétérogène.
+
+On entraîne ensuite un perceptron pour distinguer le chiffre 6 de tous les autres chiffres. Le problème devient plus difficile, car la classe négative regroupe plusieurs formes très différentes.
 
 #table(
 columns: 4,
@@ -408,9 +389,15 @@ align: center,
 
 Le score reste élevé, mais l'erreur test est plus importante que dans le cas 6 contre 9. Cela confirme que le problème est plus difficile.
 
-#fig("figures_tme3/05_loss_usps_6_vs_all.png", [Évolution du coût moyen du perceptron pour la classification 6 contre toutes les autres classes.])
-
-#fig("figures_tme3/06_erreurs_usps_6_vs_all.png", [Erreurs d'apprentissage et de test pour la classification 6 contre toutes les autres classes.])
+#figure(
+  grid(
+    rows: 2,
+    gutter: 10pt,
+    [#image("figures_tme3/05_loss_usps_6_vs_all.png", width: 75%)],
+    [#image("figures_tme3/06_erreurs_usps_6_vs_all.png", width: 75%)],
+  ),
+  caption: [*En haut:* Évolution du coût moyen du perceptron pour la classification 6 contre toutes les autres classes. *En bas:* Erreurs d'apprentissage et de test pour la classification 6 contre toutes les autres classes.]
+)
 
 #fig("figures_tme3/07_poids_usps_6_vs_all.png", [Matrice de poids apprise pour séparer le chiffre 6 de toutes les autres classes.])
 
@@ -418,9 +405,9 @@ La matrice de poids est moins facile à interpréter que dans le cas 6 contre 9,
 
 == Descente batch, stochastique et mini-batch
 
-Nous comparons ensuite trois variantes d'apprentissage.
+On compare ensuite trois variantes d'apprentissage.
 
-#figwide("figures_tme3/08_comparaison_batch_stochastic_minibatch.png", [Comparaison des coûts moyens pour les descentes batch, stochastique et mini-batch sur USPS 6 contre 9.])
+#fig("figures_tme3/08_comparaison_batch_stochastic_minibatch.png", [Comparaison des coûts moyens pour les descentes batch, stochastique et mini-batch sur USPS 6 contre 9.])
 
 #table(
 columns: 4,
@@ -436,11 +423,12 @@ Les trois méthodes convergent bien sur ce problème. Le mini-batch et la descen
 
 == Effet du bruit sur la convergence
 
-L'énoncé demande aussi de comparer la vitesse de convergence en fonction du bruit dans le jeu de données. Le coût perceptron peut devenir nul très vite lorsque les données sont séparables. Pour rendre la comparaison plus lisible, on trace ici l'erreur d'apprentissage au cours des époques.
+On compare la vitesse de convergence en fonction du bruit dans le jeu de données. Le coût perceptron peut devenir nul très vite lorsque les données sont séparables. Pour rendre la comparaison plus lisible, on trace ici l'erreur d'apprentissage au cours des époques.
 
 #figure(
 grid(
-columns: 3,
+columns: 2,
+rows: 2,
 gutter: 8pt,
 [#image("figures_tme3/15_bruit_erreur_epsilon0.2.png", width: 100%)],
 [#image("figures_tme3/15_bruit_erreur_epsilon0.6.png", width: 100%)],
@@ -451,7 +439,7 @@ caption: [Effet du bruit sur l'erreur d'apprentissage pour les descentes batch, 
 
 Lorsque le bruit augmente, les classes se recouvrent davantage. L'erreur finale devient plus élevée et les trajectoires sont moins régulières. Les méthodes stochastique et mini-batch peuvent être plus bruitées, car elles utilisent moins d'exemples à chaque mise à jour.
 
-== Projection polynomiale
+== Projection
 
 Un modèle linéaire dans l'espace initial ne peut produire qu'une frontière linéaire. Pour augmenter son expressivité, on projette les données dans un espace de plus grande dimension.
 
@@ -469,20 +457,21 @@ align: center,
 [Échiquier], [0.496], [0.504],
 )
 
-#fig("figures_tme3/09_projection_poly_deux_gaussiennes.png", [Frontière obtenue avec une projection polynomiale de degré 2 avec biais sur deux gaussiennes.])
-
-#fig("figures_tme3/09_projection_poly_quatre_gaussiennes.png", [Frontière obtenue avec une projection polynomiale de degré 2 avec biais sur quatre gaussiennes.])
+#figure(
+  grid(
+    columns: 2,
+    gutter: 10pt,
+    [#image("figures_tme3/09_projection_poly_deux_gaussiennes.png", width: 100%)],
+    [#image("figures_tme3/09_projection_poly_quatre_gaussiennes.png", width: 100%)],
+  ),
+  caption: [Frontière obtenue avec une projection polynomiale de degré 2 avec biais sur deux gaussiennes et sur quatre gaussienne.]
+)
 
 #fig("figures_tme3/09_projection_poly_echiquier.png", [Frontière obtenue avec une projection polynomiale de degré 2 avec biais sur l'échiquier.])
 
 La projection polynomiale fonctionne très bien pour les deux gaussiennes et les quatre gaussiennes. En revanche, elle échoue sur l'échiquier : le score est proche de 0.5, donc proche du hasard. Une frontière quadratique reste insuffisante pour cette structure.
 
 == Projection gaussienne
-
-Nous utilisons ensuite une projection gaussienne sur des points de base $b_1, ..., b_m$ :
-$
-phi(x) = ( exp(- ||x - b_1||^2 / (2 sigma^2)), ..., exp(- ||x - b_m||^2 / (2 sigma^2)) ).
-$
 
 #figure(
 grid(
@@ -539,8 +528,6 @@ align: center,
 [1.0], [1e-1], [0.542], [0.9963],
 )
 
-#fig("figures_tme3/13_hinge_resume_scores.png", [Score d'apprentissage selon les valeurs de $alpha$ et $lambda$ pour la perte hinge gaussienne.])
-
 #figure(
 grid(
 columns: 2,
@@ -553,21 +540,21 @@ caption: [Deux frontières hinge gaussiennes : faible régularisation à gauche 
 
 Lorsque $alpha$ augmente, le coût final augmente car la marge demandée est plus grande. Lorsque $lambda$ augmente, les poids sont davantage pénalisés, ce qui peut entraîner du sous-apprentissage. Ici, le meilleur score parmi les configurations testées est obtenu avec $alpha = 0.5$ et $lambda = 10^(-4)$.
 
-Cette perte est proche de celle utilisée dans les SVM : elle introduit une marge et une pénalisation sur les poids. La différence principale est qu'ici nous optimisons directement notre modèle projeté, alors que les SVM utilisent une formulation standard avec noyaux et vecteurs supports.
+Cette perte est proche de celle utilisée dans les SVM : elle introduit une marge et une pénalisation sur les poids. La différence principale est qu'ici on optimise directement notre modèle projeté, alors que les SVM utilisent une formulation standard avec noyaux et vecteurs supports.
 
 == SVM et Grid Search
 
-Enfin, nous utilisons les SVM de `sklearn`. Les paramètres sont choisis par validation croisée avec `GridSearchCV`. Pour l'échiquier, la grille de paramètres a été élargie pour le noyau RBF, car une grille trop petite donnait des résultats trop faibles.
+Enfin, on utilise les SVM de `sklearn`. Les paramètres sont choisis par validation croisée avec `GridSearchCV`. Pour l'échiquier, la grille de paramètres a été élargie pour le noyau RBF, car une grille trop petite donnait des résultats trop faibles.
 
 #fig("figures_tme3/14_svm_echiquier_vecteurs_supports.png", [Frontière de décision du meilleur SVM sur l'échiquier, avec les vecteurs supports indiqués en noir.])
 
-L'énoncé demande aussi comment évolue le nombre de vecteurs supports selon le noyau et les paramètres.
+*Comment évolue le nombre de vecteurs supports selon le noyau et les paramètres ?*
 
 #figwide("figures_tme3/17_svm_2d_parametres_vecteurs_supports.png", [Comparaison des noyaux SVM sur l'échiquier : score test et nombre de vecteurs supports.])
 
 #figwide("figures_tme3/18_svm_usps_parametres_vecteurs_supports.png", [Comparaison des noyaux SVM sur USPS 6 contre 9 : score test et nombre de vecteurs supports.])
 
-Les vecteurs supports sont les exemples qui participent directement à la définition de la frontière. Sur l'échiquier, leur nombre est élevé, ce qui reflète la complexité de la frontière. Sur USPS 6 contre 9, certains paramètres donnent un excellent score avec peu de vecteurs supports, alors qu'un noyau trop flexible peut utiliser beaucoup plus de points.
+Les vecteurs supports sont les exemples qui participent directement à la définition de la frontière. Sur l'échiquier, leur nombre est élevé, ce qui reflète la complexité de la frontière. Sur USPS 6 contre 9, certains paramètres donnent un très bon score avec peu de vecteurs supports, alors qu'un noyau trop flexible peut utiliser beaucoup plus de points.
 
 Lorsque `gamma` devient très grand pour le noyau RBF, le modèle devient très local. Le score d'apprentissage peut alors devenir presque parfait tandis que le score test diminue : on observe du sur-apprentissage. Le nombre de vecteurs supports augmente également fortement.
 
@@ -575,37 +562,47 @@ Dans le cas linéaire, on retrouve une frontière proche de celle obtenue avec l
 
 == Conclusion
 
-Ce TME met en évidence les limites et les extensions naturelles des modèles linéaires. Le perceptron fonctionne bien lorsque les données sont presque linéairement séparables, comme pour USPS 6 contre 9. Le cas 6 contre toutes les autres classes est plus difficile, mais reste bien traité.
-
-Les projections polynomiales permettent de résoudre certains problèmes non linéaires simples, comme les quatre gaussiennes, mais échouent sur l'échiquier. Les projections gaussiennes améliorent les résultats sur certains problèmes, mais restent limitées sur l'échiquier avec les paramètres testés. La perte hinge introduit une notion de marge et rapproche le modèle des SVM.
-
-Enfin, les SVM avec noyau RBF donnent les meilleurs résultats sur les données complexes, notamment l'échiquier et USPS 6 contre 9.
+On a pu voir les limites et les extensions naturelles des modèles linéaires. Le perceptron fonctionne bien lorsque les données sont presque linéairement séparables, comme pour USPS 6 contre 9. Le cas 6 contre toutes les autres classes est plus difficile, mais reste bien traité. Les projections polynomiales permettent de résoudre certains problèmes non linéaires simples, comme les quatre gaussiennes, mais échouent sur l'échiquier. Les projections gaussiennes améliorent les résultats sur certains problèmes, mais restent limitées sur l'échiquier avec les paramètres testés. La perte hinge introduit une notion de marge et rapproche le modèle des SVM. Enfin, les SVM avec noyau RBF donnent les meilleurs résultats sur les données complexes, notamment l'échiquier et USPS 6 contre 9.
 
 = TME 5 : Clustering spatial des points d'intérêt parisiens
 
 == Introduction
 
-L'objectif de ce TME est de caractériser spatialement l'espace urbain parisien à partir des points d'intérêt présents dans différentes zones. Chaque région est représentée par un profil de types de POIs, puis ces profils sont regroupés par KMeans.
+On cherche à caractériser spatialement l'espace urbain parisien à partir des points d'intérêt présents dans différentes zones. Chaque région est représentée par un profil de types de POIs, puis ces profils sont regroupés par KMeans.
 
 Dans le jeu de données utilisé, les types de POIs ne sont pas codés par une seule colonne catégorielle. Ils sont représentés par des colonnes indicatrices : `restaurant`, `bar`, `cafe`, `bakery`, etc. Une région est donc décrite par la moyenne de ces colonnes sur les POIs qu'elle contient.
 
-#fig("figures_tme5/01_poi_paris.png", [Répartition des points d'intérêt dans Paris.])
+#figure(
+  image("figures_tme5/01_poi_paris.png", width: 75%),
+  caption: [Répartition des points d'intérêt dans Paris.]
+)
 
 == Discrétisation manuelle par grille
 
-On ne peut pas utiliser directement les arrondissements, car ils sont trop grands et peuvent regrouper des sous-régions très différentes. On commence donc par discrétiser l'espace avec une grille régulière de taille $N times N$.
+On ne peut pas utiliser directement les arrondissements, car ils sont trop grands et peuvent regrouper des sous-régions très différentes. On commence donc par discrétiser l'espace avec une grille régulière de taille $N times N$. Chaque cellule est ensuite décrite par un vecteur de dimension 12. Chaque coordonnée correspond à la proportion d'un type de POI dans la cellule. On applique ensuite KMeans aux descriptions des cellules non vides.
 
-Pour une coordonnée GPS (longitude, latitude), la cellule correspondante est calculée par :
+#figure(
+  table(
+    columns: 2,
+    inset: 6pt,
+    align: center,
+    [Quantité], [Valeur],
+    [Taille de la grille], [20 x 20],
+    [Nombre total de cellules], [400],
+    [Nombre de cellules non vides], [392],
+    [Proportion de cellules non vides], [0.98],
+    [Nombre de clusters retenu], [6],
+    [Inertie], [16.0379],
+  ),
+  caption: [Résumé de la discrétisation en grille.]
+)
 
-i = floor(N x (longitude - lomin) / (lomax - lomin))
+La grille contient presque uniquement des cellules non vides. La discrétisation est donc assez fine pour localiser les POIs, sans produire trop de régions vides.
 
-j = floor(N x (latitude - lamin) / (lamax - lamin))
-
-Chaque cellule est ensuite décrite par un vecteur de dimension 12. Chaque coordonnée correspond à la proportion d'un type de POI dans la cellule. Une cellule contenant surtout des restaurants et des bars aura donc des valeurs élevées sur ces coordonnées.
-
-On applique ensuite KMeans aux descriptions des cellules non vides.
-
-#fig("figures_tme5/02_clustering_grille.png", [Clustering des cellules obtenu avec une discrétisation en grille.])
+#figure(
+  image("figures_tme5/02_clustering_grille.png", width: 75%),
+  caption: [Clustering des cellules obtenu avec une discrétisation en grille.]
+)
 
 Les cellules d'une même couleur ont des profils de POIs similaires. Cette visualisation permet de repérer des régions ayant une composition urbaine proche, même si elles ne sont pas nécessairement voisines.
 
@@ -613,32 +610,69 @@ Les cellules d'une même couleur ont des profils de POIs similaires. Cette visua
 
 Les centroïdes permettent d'interpréter les clusters. Chaque centroïde représente le profil moyen des cellules appartenant au cluster.
 
-#fig("figures_tme5/03_centroides_grille.png", [Centroïdes des clusters obtenus avec la grille.])
+#figure(
+  image("figures_tme5/03_centroides_grille.png", width: 85%),
+  caption: [Centroïdes des clusters obtenus avec la grille.]
+)
 
-Un cluster peut par exemple être dominé par les restaurants et bars, tandis qu'un autre peut être davantage marqué par les commerces, les cafés ou les hébergements. C'est cette lecture des centroïdes qui donne un sens aux couleurs observées sur la carte.
+#figure(
+  table(
+    columns: 2,
+    inset: 6pt,
+    align: left,
+    [Cluster], [Types dominants],
+    [0], [`home_goods_store` (0.368), `restaurant` (0.259), `furniture_store` (0.250)],
+    [1], [`clothing_store` (0.470), `restaurant` (0.204), `home_goods_store` (0.098)],
+    [2], [`restaurant` (0.239), `lodging` (0.182), `home_goods_store` (0.157)],
+    [3], [`restaurant` (0.967), `cafe` (0.100), `bar` (0.083)],
+    [4], [`restaurant` (0.532), `bar` (0.180), `lodging` (0.121)],
+    [5], [`restaurant` (0.363), `bar` (0.205), `lodging` (0.134)],
+  ),
+  caption: [Types dominants des clusters de grille.]
+)
+
+Les centroïdes montrent plusieurs profils urbains. Certains clusters sont fortement dominés par les restaurants, tandis que d'autres sont davantage associés aux commerces ou à l'hébergement. Le cluster 3 est presque entièrement dominé par les restaurants, alors que le cluster 1 est surtout associé aux magasins de vêtements.
 
 == Choix du nombre de clusters : méthode elbow
 
 Le score elbow correspond à l'inertie du modèle KMeans. L'inertie mesure la somme des distances quadratiques entre les points et leur centroïde. Elle diminue nécessairement lorsque le nombre de clusters augmente.
 
-#fig("figures_tme5/04_elbow_grille.png", [Courbe elbow pour le clustering des cellules de la grille.])
+#figure(
+  image("figures_tme5/04_elbow_grille.png", width: 75%),
+  caption: [Courbe elbow pour le clustering des cellules de la grille.]
+)
 
-On cherche un compromis : un nombre de clusters assez grand pour bien décrire les différences entre régions, mais pas trop grand pour garder une interprétation simple. Le nombre optimal est situé près du coude de la courbe, c'est-à-dire au moment où la baisse d'inertie devient nettement plus faible.
-
-Dans notre cas, le coude semble apparaître autour de $K = $ #strong[à compléter]. On retient donc ce nombre comme compromis raisonnable pour la discrétisation en grille.
+Le coude n'est pas parfaitement net, mais un choix autour de $K = 5$ ou $K = 6$ semble raisonnable. On retients $K = 6$ pour obtenir une description assez fine tout en gardant des clusters interprétables.
 
 == Limites de la discrétisation en grille
 
-La grille est simple à construire et à interpréter, mais elle reste arbitraire. Certaines cellules contiennent beaucoup de POIs, d'autres très peu, voire aucun. De plus, la grille peut couper artificiellement des quartiers cohérents ou mélanger des zones différentes dans une même cellule.
+La grille est simple à construire et à interpréter, mais elle reste arbitraire. Certaines cellules peuvent couper artificiellement des quartiers cohérents ou mélanger des zones différentes dans une même cellule.
 
 Cette méthode donne donc une première approximation, mais elle ne tient pas compte de la densité réelle des POIs.
 
 == Discrétisation automatique de l'espace
 
-Pour obtenir des régions plus adaptées aux données, on applique KMeans directement aux coordonnées GPS des POIs. Cette étape correspond à une quantization spatiale. Une grille $10 times 10$ contient 100 cellules ; on peut donc comparer cette approche à une quantization avec$K_{"geo"}$
-clusters.
+Pour obtenir des régions plus adaptées aux données, on applique KMeans directement aux coordonnées GPS des POIs. Cette étape correspond à une quantization spatiale. Une grille $10 times 10$ contient 100 cellules ; on peut donc comparer cette approche à une quantization avec $K_"geo" = 100$ clusters.
 
-#fig("figures_tme5/05_quantization_spatiale.png", [Quantization spatiale des POIs par KMeans.])
+#figure(
+  table(
+    columns: 2,
+    inset: 6pt,
+    align: center,
+    [Quantité], [Valeur],
+    [Nombre de régions spatiales], [100],
+    [Inertie spatiale], [0.933682],
+    [Taille minimale des régions], [111],
+    [Taille maximale des régions], [576],
+    [Taille moyenne des régions], [318.52],
+  ),
+  caption: [Résumé de la quantization spatiale.]
+)
+
+#figure(
+  image("figures_tme5/05_quantization_spatiale.png", width: 75%),
+  caption: [Quantization spatiale des POIs par KMeans.]
+)
 
 Contrairement à la grille régulière, cette discrétisation s'adapte à la densité des données. Les régions sont plus petites dans les zones riches en POIs et plus grandes dans les zones moins denses.
 
@@ -646,52 +680,103 @@ Contrairement à la grille régulière, cette discrétisation s'adapte à la den
 
 Une fois les clusters spatiaux obtenus, chaque région spatiale est décrite par la distribution moyenne de ses types de POIs. On applique ensuite un second KMeans à ces descriptions.
 
-#fig("figures_tme5/06_clustering_regions_spatiales.png", [Clustering des régions spatiales selon les types de POIs.])
+#figure(
+  image("figures_tme5/06_clustering_regions_spatiales.png", width: 75%),
+  caption: [Clustering des régions spatiales selon les types de POIs.]
+)
 
-Cette carte est généralement plus pertinente que celle obtenue avec la grille. Les régions sont moins arbitraires et suivent davantage la géométrie réelle des points d'intérêt.
+Cette carte est plus adaptée que celle obtenue avec la grille. Les régions sont moins arbitraires et suivent davantage la géométrie réelle des points d'intérêt.
 
-#fig("figures_tme5/07_centroides_regions_spatiales.png", [Centroïdes des clusters obtenus après quantization spatiale.])
+#figure(
+  image("figures_tme5/07_centroides_regions_spatiales.png", width: 85%),
+  caption: [Centroïdes des clusters obtenus après quantization spatiale.]
+)
 
-Les centroïdes s'interprètent comme précédemment : chaque barre indique l'importance moyenne d'un type de POI dans un cluster. Ils permettent de comprendre pourquoi certaines régions sont regroupées.
+#figure(
+  table(
+    columns: 2,
+    inset: 6pt,
+    align: left,
+    [Cluster], [Types dominants],
+    [0], [`restaurant` (0.365), `bar` (0.191), `lodging` (0.166)],
+    [1], [`restaurant` (0.249), `lodging` (0.177), `bar` (0.172)],
+    [2], [`clothing_store` (0.439), `restaurant` (0.200), `home_goods_store` (0.140)],
+    [3], [`restaurant` (0.292), `clothing_store` (0.222), `bar` (0.150)],
+    [4], [`restaurant` (0.400), `bar` (0.155), `home_goods_store` (0.152)],
+    [5], [`home_goods_store` (0.246), `restaurant` (0.235), `clothing_store` (0.194)],
+  ),
+  caption: [Types dominants des clusters de régions spatiales.]
+)
+
+Les centroïdes des régions spatiales sont plus équilibrés que ceux obtenus avec la grille. On retrouve des profils dominés par les restaurants et les bars, mais aussi des profils davantage associés aux commerces ou aux hébergements.
 
 == Choix du nombre de clusters pour les régions spatiales
 
 On trace de nouveau la courbe elbow, cette fois pour le clustering des régions spatiales décrites par leurs types de POIs.
 
-#fig("figures_tme5/08_elbow_regions_spatiales.png", [Courbe elbow pour les régions spatiales.])
+#figure(
+  image("figures_tme5/08_elbow_regions_spatiales.png", width: 75%),
+  caption: [Courbe elbow pour les régions spatiales.]
+)
 
-Le coude de la courbe indique le nombre de clusters à retenir. Dans notre cas, il semble apparaître autour de $K = $ #strong[à compléter]. Ce choix doit aussi rester interprétable : trop peu de clusters donnent une description trop grossière, tandis que trop de clusters rendent les résultats fragmentés.
+Ici aussi, le coude n'est pas parfaitement net, mais $K = 5$ ou $K = 6$ semble raisonnable. On conserve $K = 6$ pour pouvoir comparer avec la discrétisation en grille.
 
 == Comparaison entre grille et quantization spatiale
 
 La discrétisation en grille est simple, mais elle impose une structure régulière qui ne correspond pas nécessairement à la densité des POIs. La quantization spatiale est plus adaptée, car elle regroupe les POIs selon leur proximité géographique.
 
-Ainsi, la grille est plus facile à expliquer, mais la quantization spatiale donne souvent des régions plus pertinentes. Pour un rapport, il est intéressant de montrer les deux : la grille comme méthode simple de référence, puis la quantization spatiale comme amélioration.
+Ainsi, la grille est plus facile à expliquer, mais la quantization spatiale donne des régions plus pertinentes géographiquement. Il est donc utile de montrer les deux : la grille comme méthode de référence, puis la quantization spatiale comme amélioration.
 
 == Corrélation entre types de POIs
 
 On observe ensuite les corrélations entre types de POIs à partir des descriptions régionales.
 
-#fig("figures_tme5/09_correlation_types.png", [Matrice de corrélation entre types de POIs.])
+#figure(
+  image("figures_tme5/09_correlation_types.png", width: 75%),
+  caption: [Matrice de corrélation entre types de POIs.]
+)
 
-Des corrélations positives indiquent que certains types apparaissent souvent ensemble dans les mêmes régions. Par exemple, les restaurants, bars et cafés peuvent être associés dans des zones très fréquentées. Des corrélations négatives indiquent au contraire que certains types sont rarement présents dans les mêmes profils régionaux.
+#figure(
+  table(
+    columns: 2,
+    inset: 6pt,
+    align: left,
+    [Paire de types], [Corrélation],
+    [`furniture_store` / `home_goods_store`], [0.926],
+    [`cafe` / `night_club`], [0.595],
+    [`clothing_store` / `bar`], [-0.522],
+    [`bakery` / `clothing_store`], [-0.521],
+    [`clothing_store` / `restaurant`], [-0.506],
+    [`laundry` / `lodging`], [0.501],
+    [`cafe` / `restaurant`], [-0.428],
+    [`atm` / `night_club`], [0.416],
+  ),
+  caption: [Corrélations les plus fortes entre types de POIs.]
+)
 
-Ces corrélations peuvent influencer le KMeans, car des variables redondantes peuvent compter plusieurs fois dans la distance euclidienne.
+Certaines corrélations sont très fortes. Les magasins de meubles et les magasins d'équipement de maison apparaissent souvent ensemble. Les cafés et les boîtes de nuit sont également positivement corrélés. À l'inverse, les zones dominées par les magasins de vêtements sont moins associées aux bars ou aux restaurants.
+
+Ces corrélations peuvent influencer KMeans, car des variables redondantes peuvent compter plusieurs fois dans la distance euclidienne.
 
 == Traitement proposé pour améliorer les résultats
 
 Un traitement simple consiste à standardiser les colonnes avant le clustering. Cela donne un poids comparable à chaque type de POI et évite que les catégories les plus fréquentes dominent complètement la distance.
 
-#fig("figures_tme5/10_clustering_standardise.png", [Clustering obtenu après standardisation des descriptions de types.])
+#figure(
+  image("figures_tme5/10_clustering_standardise.png", width: 75%),
+  caption: [Clustering obtenu après standardisation des descriptions de types.]
+)
 
-La standardisation peut faire apparaître des clusters plus équilibrés, en donnant davantage d'importance aux types rares. Elle peut cependant rendre l'interprétation des centroïdes moins directe, car les variables ne sont plus des proportions brutes.
+Après standardisation, les types rares ont davantage d'influence dans le calcul des distances. Les clusters obtenus peuvent donc différer de ceux obtenus sur les proportions brutes.
 
-D'autres traitements seraient possibles : normalisation des profils, PCA pour réduire les redondances entre types corrélés, ou encore choix d'une autre distance plus adaptée aux distributions.
+L'inertie avant standardisation vaut 0.9412, tandis que l'inertie après standardisation vaut 631.9848. Ces valeurs ne sont pas directement comparables, car les échelles des variables ont changé.
 
 == Conclusion
 
 Ce TME montre comment caractériser l'espace urbain parisien à partir des distributions de POIs. La discrétisation en grille fournit une première approche simple, mais assez arbitraire. La quantization spatiale par KMeans donne une partition plus adaptée à la densité réelle des points.
 
 L'interprétation repose sur trois éléments complémentaires : les cartes, les centroïdes et les courbes elbow. Les cartes montrent l'organisation spatiale des clusters, les centroïdes expliquent leur composition, et les courbes elbow aident à choisir un nombre raisonnable de clusters.
+
+Les clusters obtenus reflètent différents profils urbains parisiens : zones commerciales, zones dominées par les restaurants et les bars, régions plus liées aux hébergements ou aux commerces spécialisés.
 
 Enfin, l'analyse des corrélations entre types montre qu'un prétraitement peut être utile. La standardisation est une première solution pour limiter la domination des types les plus fréquents et rendre le clustering plus équilibré.
